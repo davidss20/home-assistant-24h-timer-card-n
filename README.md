@@ -1,4 +1,4 @@
-# Timer 24H - Complete Server-Side Scheduling for Home Assistant
+# Timer 24H Integration - Complete Server-Side Scheduling for Home Assistant
 
 <div align="center">
 

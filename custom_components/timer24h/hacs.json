@@ -1,11 +1,10 @@
 {
-  "name": "Timer 24H",
+  "name": "Timer 24H Integration",
   "content_in_root": false,
   "render_readme": true,
   "iot_class": "Local Push",
   "homeassistant": "2023.1.0",
   "zip_release": false,
   "hide_default_branch": false,
-  "country": ["IL"],
   "hacs": "1.6.0"
 }
