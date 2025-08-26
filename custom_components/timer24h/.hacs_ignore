@@ -1,6 +1,9 @@
-www/timer-24h-card/node_modules/
-www/timer-24h-card/src/
-www/timer-24h-card/package*.json
-www/timer-24h-card/tsconfig.json
-www/timer-24h-card/vite.config.ts
-www/timer-24h-card/README.md
+# Ignore development files
+*.ts
+*.map
+frontend/*.map
+node_modules/
+src/
+package*.json
+tsconfig.json
+vite.config.ts

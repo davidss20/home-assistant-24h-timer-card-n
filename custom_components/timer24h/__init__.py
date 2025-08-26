@@ -183,14 +183,14 @@ async def _async_register_services(hass: HomeAssistant, coordinator: Timer24HCoo
 async def _async_register_frontend_resources(hass: HomeAssistant) -> None:
     """Register frontend resources for the Timer 24H card."""
     
-    # Register the main card JavaScript
+    # Register the frontend static path
     hass.http.register_static_path(
         f"/{DOMAIN}",
-        hass.config.path(f"custom_components/{DOMAIN}/www"),
+        hass.config.path(f"custom_components/{DOMAIN}/frontend"),
         cache_headers=False,
     )
     
     # Add the card to frontend
-    add_extra_js_url(hass, f"/{DOMAIN}/timer-24h-card/timer-24h-card.js")
+    add_extra_js_url(hass, f"/{DOMAIN}/timer-24h-card.js")
     
     _LOGGER.info("Timer 24H frontend resources registered")
