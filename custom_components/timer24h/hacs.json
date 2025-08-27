@@ -6,5 +6,10 @@
   "homeassistant": "2023.1.0",
   "zip_release": false,
   "hide_default_branch": false,
-  "hacs": "1.6.0"
+  "hacs": "1.6.0",
+  "domains": ["timer24h"],
+  "config_flow": true,
+  "documentation": "https://github.com/davidss20/home-assistant-24h-timer-card-n",
+  "issue_tracker": "https://github.com/davidss20/home-assistant-24h-timer-card-n/issues",
+  "skip": ["brands"]
 }

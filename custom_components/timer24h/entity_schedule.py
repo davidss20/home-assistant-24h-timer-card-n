@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
@@ -14,7 +14,6 @@ from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN, EVENT_SCHEDULE_UPDATED, STATE_DISABLED, STATE_OFF, STATE_ON
 from .coordinator import Timer24HCoordinator
-from .models import ScheduleState
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -27,16 +26,16 @@ async def async_setup_entry(
     """Set up Timer 24H schedule entities."""
     coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
     storage = hass.data[DOMAIN][entry.entry_id]["storage"]
-    
+
     # Create sensor entities for existing schedules
     schedules = await storage.async_get_all_schedules()
     entities = []
-    
-    for schedule_id, schedule in schedules.items():
+
+    for schedule_id, _schedule in schedules.items():
         entities.append(Timer24HScheduleEntity(coordinator, schedule_id))
-    
+
     async_add_entities(entities)
-    
+
     # Listen for new schedules
     @callback
     def _schedule_updated(event):
@@ -47,33 +46,33 @@ async def async_setup_entry(
                 entity for entity in hass.data[DOMAIN].get("entities", [])
                 if hasattr(entity, "schedule_id") and entity.schedule_id == schedule_id
             ]
-            
+
             if not existing_entities:
                 # Create new entity
                 entity = Timer24HScheduleEntity(coordinator, schedule_id)
                 async_add_entities([entity])
-                
+
                 # Store reference
                 if "entities" not in hass.data[DOMAIN]:
                     hass.data[DOMAIN]["entities"] = []
                 hass.data[DOMAIN]["entities"].append(entity)
-    
+
     hass.bus.async_listen(EVENT_SCHEDULE_UPDATED, _schedule_updated)
 
 
 class Timer24HScheduleEntity(SensorEntity, RestoreEntity):
     """Sensor entity representing a Timer 24H schedule state."""
-    
+
     def __init__(self, coordinator: Timer24HCoordinator, schedule_id: str) -> None:
         """Initialize the schedule entity."""
         self._coordinator = coordinator
         self._schedule_id = schedule_id
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
-        
+
         # Generate unique ID and name
         self._attr_unique_id = f"{DOMAIN}_{schedule_id}"
         self._attr_name = f"Timer 24H {schedule_id.replace('_', ' ').title()}"
-        
+
         # Device info
         self._attr_device_info = {
             "identifiers": {(DOMAIN, "timer24h")},
@@ -82,52 +81,52 @@ class Timer24HScheduleEntity(SensorEntity, RestoreEntity):
             "model": "Schedule Controller",
             "sw_version": "1.0.0",
         }
-        
+
         # Initialize state
         self._state = None
         self._attrs = {}
         self._available = True
-    
+
     @property
     def schedule_id(self) -> str:
         """Return the schedule ID."""
         return self._schedule_id
-    
+
     @property
-    def native_value(self) -> Optional[str]:
+    def native_value(self) -> str | None:
         """Return the state of the schedule."""
         schedule_state = self._coordinator.get_schedule_state(self._schedule_id)
         if not schedule_state:
             return STATE_DISABLED
-        
+
         if not schedule_state.schedule.enabled:
             return STATE_DISABLED
-        
+
         desired = schedule_state.desired_state
         if desired is None:
             return STATE_OFF  # Conditions prevent activation
-        
+
         return STATE_ON if desired else STATE_OFF
-    
+
     @property
-    def extra_state_attributes(self) -> Dict[str, Any]:
+    def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional state attributes."""
         schedule_state = self._coordinator.get_schedule_state(self._schedule_id)
         if not schedule_state:
             return {}
-        
+
         schedule = schedule_state.schedule
-        
+
         # Get current slot info
         now = dt_util.now()
         current_slot = self._coordinator._get_current_slot_index(now)
         next_slot_time = self._coordinator._get_next_slot_time(now)
-        
+
         # Calculate next state change
         next_change_slot = None
         next_change_state = None
         current_state = schedule.is_active_at_slot(current_slot)
-        
+
         for i in range(1, 48):  # Check next 47 slots (47.5 hours)
             slot_index = (current_slot + i) % 48
             slot_state = schedule.is_active_at_slot(slot_index)
@@ -135,7 +134,7 @@ class Timer24HScheduleEntity(SensorEntity, RestoreEntity):
                 next_change_slot = slot_index
                 next_change_state = slot_state
                 break
-        
+
         next_change_time = None
         if next_change_slot is not None:
             # Calculate time for next change
@@ -143,7 +142,7 @@ class Timer24HScheduleEntity(SensorEntity, RestoreEntity):
             if slots_ahead <= 0:
                 slots_ahead += 48  # Next day
             next_change_time = now + dt_util.dt.timedelta(minutes=slots_ahead * 30)
-        
+
         attrs = {
             "schedule_id": self._schedule_id,
             "target_entity_id": schedule.target_entity_id,
@@ -162,7 +161,7 @@ class Timer24HScheduleEntity(SensorEntity, RestoreEntity):
             "next_change_state": next_change_state,
             "next_change_time": next_change_time.isoformat() if next_change_time else None,
         }
-        
+
         # Add condition details
         if schedule.conditions:
             condition_states = {}
@@ -175,17 +174,17 @@ class Timer24HScheduleEntity(SensorEntity, RestoreEntity):
                     "is_met": condition.is_met(entity_state.state if entity_state else "unknown"),
                 }
             attrs["condition_states"] = condition_states
-        
+
         # Add schedule slots for visualization
         attrs["slots"] = schedule.slots
-        
+
         return attrs
-    
+
     @property
     def available(self) -> bool:
         """Return if entity is available."""
         return self._available
-    
+
     @property
     def icon(self) -> str:
         """Return the icon for the entity."""
@@ -196,32 +195,32 @@ class Timer24HScheduleEntity(SensorEntity, RestoreEntity):
             return "mdi:timer"
         else:
             return "mdi:timer-outline"
-    
+
     async def async_added_to_hass(self) -> None:
         """When entity is added to hass."""
         await super().async_added_to_hass()
-        
+
         # Restore state
         last_state = await self.async_get_last_state()
         if last_state:
             self._state = last_state.state
             self._attrs = dict(last_state.attributes)
-        
+
         # Listen for schedule updates
         @callback
         def _schedule_updated(event):
             if event.data.get("schedule_id") == self._schedule_id:
                 self.async_write_ha_state()
-        
+
         self.async_on_remove(
             self.hass.bus.async_listen(EVENT_SCHEDULE_UPDATED, _schedule_updated)
         )
-        
+
         # Schedule periodic updates
         @callback
         def _periodic_update():
             self.async_write_ha_state()
-        
+
         # Update every minute to reflect current slot changes
         self.async_on_remove(
             self.hass.helpers.event.async_track_time_interval(
@@ -229,7 +228,7 @@ class Timer24HScheduleEntity(SensorEntity, RestoreEntity):
                 dt_util.dt.timedelta(minutes=1)
             )
         )
-    
+
     async def async_will_remove_from_hass(self) -> None:
         """When entity will be removed from hass."""
         # Clean up any references

@@ -1,11 +1,12 @@
 """Common fixtures for Timer 24H tests."""
-import pytest
 from unittest.mock import Mock, patch
-from homeassistant.core import HomeAssistant
+
+import pytest
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
 
 from custom_components.timer24h.const import DOMAIN
-from custom_components.timer24h.models import Schedule, Condition
+from custom_components.timer24h.models import Condition, Schedule
 
 
 @pytest.fixture

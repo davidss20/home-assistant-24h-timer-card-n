@@ -2,12 +2,12 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.const import CONF_NAME
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
 
@@ -59,16 +59,16 @@ class Timer24HConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     def __init__(self) -> None:
         """Initialize config flow."""
-        self._name: Optional[str] = None
-        self._schedule_id: Optional[str] = None
-        self._target_entity_id: Optional[str] = None
-        self._timezone: Optional[str] = None
+        self._name: str | None = None
+        self._schedule_id: str | None = None
+        self._target_entity_id: str | None = None
+        self._timezone: str | None = None
 
     async def async_step_user(
-        self, user_input: Optional[Dict[str, Any]] = None
+        self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Handle the initial step."""
-        errors: Dict[str, str] = {}
+        errors: dict[str, str] = {}
 
         if user_input is not None:
             self._name = user_input[CONF_NAME]
@@ -86,10 +86,10 @@ class Timer24HConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_schedule(
-        self, user_input: Optional[Dict[str, Any]] = None
+        self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Handle the schedule setup step."""
-        errors: Dict[str, str] = {}
+        errors: dict[str, str] = {}
 
         if user_input is not None:
             self._schedule_id = user_input[CONF_SCHEDULE_ID]
@@ -145,10 +145,10 @@ class Timer24HOptionsFlow(config_entries.OptionsFlow):
         self.config_entry = config_entry
 
     async def async_step_init(
-        self, user_input: Optional[Dict[str, Any]] = None
+        self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Manage the options."""
-        errors: Dict[str, str] = {}
+        errors: dict[str, str] = {}
 
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
@@ -187,11 +187,11 @@ class Timer24HOptionsFlow(config_entries.OptionsFlow):
                 )
             ),
             vol.Optional(
-                "enable_debug_logging", 
+                "enable_debug_logging",
                 default=current_options.get("enable_debug_logging", False)
             ): bool,
             vol.Optional(
-                "reconcile_on_startup", 
+                "reconcile_on_startup",
                 default=current_options.get("reconcile_on_startup", True)
             ): bool,
         })
