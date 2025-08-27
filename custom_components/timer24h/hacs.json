@@ -3,5 +3,8 @@
   "hacs": "1.6.0",
   "domains": ["timer24h"],
   "iot_class": "Local Push",
-  "homeassistant": "2023.1.0"
+  "homeassistant": "2023.1.0",
+  "render_readme": true,
+  "zip_release": false,
+  "skip": ["brands"]
 }

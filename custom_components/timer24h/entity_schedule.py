@@ -39,7 +39,7 @@ async def async_setup_entry(
 
     # Listen for new schedules
     @callback
-    def _schedule_updated(event):
+    def _schedule_updated(event: Any) -> None:
         schedule_id = event.data.get("schedule_id")
         if schedule_id:
             # Check if entity already exists
@@ -86,7 +86,7 @@ class Timer24HScheduleEntity(SensorEntity, RestoreEntity):
 
         # Initialize state
         self._state = None
-        self._attrs = {}
+        self._attrs: dict[str, Any] = {}
         self._available = True
 
     @property
@@ -214,7 +214,7 @@ class Timer24HScheduleEntity(SensorEntity, RestoreEntity):
 
         # Listen for schedule updates
         @callback
-        def _schedule_updated(event):
+        def _schedule_updated(event: Any) -> None:
             if event.data.get("schedule_id") == self._schedule_id:
                 self.async_write_ha_state()
 
@@ -224,7 +224,7 @@ class Timer24HScheduleEntity(SensorEntity, RestoreEntity):
 
         # Schedule periodic updates
         @callback
-        def _periodic_update():
+        def _periodic_update() -> None:
             self.async_write_ha_state()
 
         # Update every minute to reflect current slot changes

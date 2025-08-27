@@ -33,7 +33,7 @@ class Condition:
     expected: str | None = None
     policy: str = DEFAULT_POLICY
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate condition after initialization."""
         if self.policy not in CONDITION_POLICIES:
             raise ValueError(f"Invalid policy: {self.policy}")
@@ -82,7 +82,7 @@ class Schedule:
     timezone: str | None = None
     conditions: list[Condition] = field(default_factory=list)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate schedule after initialization."""
         if len(self.slots) != SLOTS_PER_DAY:
             raise ValueError(f"Schedule must have exactly {SLOTS_PER_DAY} slots")
@@ -129,7 +129,7 @@ class Schedule:
 
         return self.slots[slot_index]
 
-    def evaluate_conditions(self, states: dict[str, str]) -> tuple[bool, str]:
+    def evaluate_conditions(self, states: dict[str, str]) -> tuple[bool | None, str]:
         """
         Evaluate all conditions and return (should_apply, reason).
 

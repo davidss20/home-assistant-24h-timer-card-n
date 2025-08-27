@@ -65,10 +65,11 @@ STEP_SCHEDULE_DATA_SCHEMA = vol.Schema(
 )
 
 
-class Timer24HConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class Timer24HConfigFlow(config_entries.ConfigFlow):
     """Handle a config flow for Timer 24H."""
 
     VERSION = 1
+    DOMAIN = DOMAIN
 
     def __init__(self) -> None:
         """Initialize config flow."""

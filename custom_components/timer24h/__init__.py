@@ -7,6 +7,7 @@ precision, condition-based automation, and comprehensive state management.
 
 import logging
 from datetime import timedelta
+from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -82,7 +83,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         coordinator = data["coordinator"]
         await coordinator.async_shutdown()
 
-    return unload_ok
+    return bool(unload_ok)
 
 
 async def _async_register_services(
@@ -90,7 +91,7 @@ async def _async_register_services(
 ) -> None:
     """Register Timer 24H services."""
 
-    async def async_set_schedule(call):
+    async def async_set_schedule(call: Any) -> None:
         """Service to set a schedule."""
         schedule_id = call.data.get("schedule_id")
         target_entity_id = call.data.get("target_entity_id")
@@ -119,7 +120,7 @@ async def _async_register_services(
             timezone=timezone,
         )
 
-    async def async_enable_schedule(call):
+    async def async_enable_schedule(call: Any) -> None:
         """Service to enable a schedule."""
         schedule_id = call.data.get("schedule_id")
         if not schedule_id:
@@ -128,7 +129,7 @@ async def _async_register_services(
 
         await coordinator.async_enable_schedule(schedule_id)
 
-    async def async_disable_schedule(call):
+    async def async_disable_schedule(call: Any) -> None:
         """Service to disable a schedule."""
         schedule_id = call.data.get("schedule_id")
         if not schedule_id:
@@ -137,7 +138,7 @@ async def _async_register_services(
 
         await coordinator.async_disable_schedule(schedule_id)
 
-    async def async_set_conditions(call):
+    async def async_set_conditions(call: Any) -> None:
         """Service to set conditions for a schedule."""
         schedule_id = call.data.get("schedule_id")
         conditions = call.data.get("conditions", [])
@@ -148,7 +149,7 @@ async def _async_register_services(
 
         await coordinator.async_set_conditions(schedule_id, conditions)
 
-    async def async_remove_schedule(call):
+    async def async_remove_schedule(call: Any) -> None:
         """Service to remove a schedule."""
         schedule_id = call.data.get("schedule_id")
         if not schedule_id:
@@ -157,7 +158,7 @@ async def _async_register_services(
 
         await coordinator.async_remove_schedule(schedule_id)
 
-    async def async_reconcile(call):
+    async def async_reconcile(call: Any) -> None:
         """Service to manually trigger reconciliation."""
         schedule_id = call.data.get("schedule_id")
         if schedule_id:

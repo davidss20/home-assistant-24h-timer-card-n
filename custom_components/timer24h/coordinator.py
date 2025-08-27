@@ -162,7 +162,7 @@ class Timer24HCoordinator:
 
         # Subscribe to state changes
         @callback
-        def _async_condition_changed(event):
+        def _async_condition_changed(event: Any) -> None:
             """Handle condition entity state change."""
             entity_id = event.data.get("entity_id")
             if entity_id in self._condition_entities:
