@@ -2,16 +2,34 @@
 
 ## מצב נוכחי ✅
 - ✅ כל שגיאות הלינטינג תוקנו (ruff)
-- ✅ פורמט הקוד תוקן (ruff format)
+- ✅ פורמט הקוד תוקן (ruff format)  
 - ✅ כל שגיאות mypy type annotations תוקנו (17 שגיאות)
-- ✅ קובץ hacs.json עודכן ו**הועבר לשורש הפרויקט** (זו הייתה הבעיה העיקרית!)
+- ✅ קובץ hacs.json עודכן, הועבר לשורש, ו**הוסרו שדות לא מורשים**
 - ✅ אזהרות סודות פוטנציאליים נפתרו
 
-## 🔍 הבעיה שמצאנו:
-הקובץ `hacs.json` היה במיקום הלא נכון: `custom_components/timer24h/hacs.json`
-הוא צריך להיות בשורש הפרויקט: `hacs.json`
+## 🔍 הבעיות שמצאנו ותיקנו:
 
-זו הסיבה שHACS לא הצליח לקרוא את הקובץ כראוי.
+### 1. מיקום שגוי של hacs.json:
+- ❌ **מיקום קודם**: `custom_components/timer24h/hacs.json`
+- ✅ **מיקום נכון**: `hacs.json` (בשורש הפרויקט)
+
+### 2. שדות לא מורשים ב-hacs.json:
+- ❌ הסרנו: `domains`, `iot_class`, `hacs`, `homeassistant` 
+- ✅ השארנו רק: `name`, `content_in_root`, `render_readme`
+
+השדות `domains` ו`iot_class` שייכים ל-`manifest.json`, לא ל-`hacs.json`!
+
+## 🎯 מה אמור לעבוד עכשיו:
+עם hacs.json המינימלי החדש, שגיאת `<Validation hacsjson> failed` אמורה להיפתר!
+
+**hacs.json הנוכחי (תקין):**
+```json
+{
+  "name": "Timer 24H Integration",
+  "content_in_root": false,
+  "render_readme": true
+}
+```
 
 ## פעולות נדרשות ב-GitHub 🔧
 
