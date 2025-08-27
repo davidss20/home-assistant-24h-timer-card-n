@@ -16,6 +16,7 @@ from homeassistant.helpers.typing import ConfigType
 
 from .const import DOMAIN, PLATFORMS
 from .coordinator import Timer24HCoordinator
+from .initial_setup import async_create_initial_schedule_if_needed
 from .storage import Timer24HStorage
 from .websocket_api import async_register_websocket_handlers
 
@@ -66,6 +67,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Register services
     await _async_register_services(hass, coordinator)
 
+    # Register frontend resources
+    await _async_register_frontend_resources(hass)
+
+    # Create initial demo schedule if needed
+    await async_create_initial_schedule_if_needed(hass, coordinator)
+
     _LOGGER.info("Timer 24H integration setup complete")
     return True
 
@@ -84,6 +91,36 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await coordinator.async_shutdown()
 
     return bool(unload_ok)
+
+
+async def _async_register_frontend_resources(hass: HomeAssistant) -> None:
+    """Register frontend resources."""
+    import os
+    from homeassistant.components.frontend import add_extra_js_url
+    
+    # Path to our card JS file
+    card_path = os.path.join(os.path.dirname(__file__), "frontend", "timer-24h-card.js")
+    
+    if os.path.exists(card_path):
+        # Register the card as a module
+        add_extra_js_url(hass, f"/local/timer-24h-card.js", es5=False)
+        
+        # Copy file to www directory if it doesn't exist
+        www_path = hass.config.path("www")
+        if not os.path.exists(www_path):
+            os.makedirs(www_path)
+        
+        target_path = os.path.join(www_path, "timer-24h-card.js")
+        
+        # Copy our card file to www directory
+        import shutil
+        try:
+            shutil.copy2(card_path, target_path)
+            _LOGGER.info("Timer 24H card copied to www directory")
+        except Exception as err:
+            _LOGGER.warning("Failed to copy Timer 24H card: %s", err)
+    else:
+        _LOGGER.warning("Timer 24H card file not found at %s", card_path)
 
 
 async def _async_register_services(
