@@ -1,0 +1,30 @@
+name: Fix Repository Settings for HACS
+
+on:
+  workflow_dispatch:  # Manual trigger
+  push:
+    branches: [ main ]
+
+jobs:
+  fix-settings:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Fix Repository Description and Topics
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        # Update description
+        curl -X PATCH \
+          -H "Authorization: token $GITHUB_TOKEN" \
+          -H "Accept: application/vnd.github.v3+json" \
+          -d '{"description":"Professional-grade 24-hour scheduling integration for Home Assistant with server-side automation, condition-based control, and beautiful visual interface."}' \
+          https://api.github.com/repos/${{ github.repository }}
+        
+        # Update topics
+        curl -X PUT \
+          -H "Authorization: token $GITHUB_TOKEN" \
+          -H "Accept: application/vnd.github.v3+json" \
+          -d '{"names":["home-assistant","hacs","custom-integration","timer","scheduler","automation","24-hour","smart-home","lovelace","websocket"]}' \
+          https://api.github.com/repos/${{ github.repository }}/topics
+        
+        echo "✅ Repository settings updated!"

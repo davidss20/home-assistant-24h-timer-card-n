@@ -1,3 +1,4 @@
 {
-  "name": "Timer 24H Integration"
+  "name": "Timer 24H Integration",
+  "skip": ["brands"]
 }
