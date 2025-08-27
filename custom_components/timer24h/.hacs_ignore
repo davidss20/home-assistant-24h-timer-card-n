@@ -1,7 +1,6 @@
-# Ignore development files
+# Development files to ignore
 *.ts
 *.map
-frontend/*.map
 node_modules/
 src/
 package*.json

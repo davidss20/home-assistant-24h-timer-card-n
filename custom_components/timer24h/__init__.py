@@ -14,7 +14,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import discovery
 from homeassistant.helpers.typing import ConfigType
-from homeassistant.components.frontend import add_extra_js_url
+# Frontend integration removed to prevent HACS confusion
 
 from .const import DOMAIN, PLATFORMS
 from .coordinator import Timer24HCoordinator
@@ -67,9 +67,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     
     # Register services
     await _async_register_services(hass, coordinator)
-    
-    # Register frontend resources
-    await _async_register_frontend_resources(hass)
     
     _LOGGER.info("Timer 24H integration setup complete")
     return True
@@ -178,19 +175,3 @@ async def _async_register_services(hass: HomeAssistant, coordinator: Timer24HCoo
     hass.services.async_register(DOMAIN, "reconcile", async_reconcile)
     
     _LOGGER.info("Timer 24H services registered")
-
-
-async def _async_register_frontend_resources(hass: HomeAssistant) -> None:
-    """Register frontend resources for the Timer 24H card."""
-    
-    # Register the frontend static path
-    hass.http.register_static_path(
-        f"/{DOMAIN}",
-        hass.config.path(f"custom_components/{DOMAIN}/frontend"),
-        cache_headers=False,
-    )
-    
-    # Add the card to frontend
-    add_extra_js_url(hass, f"/{DOMAIN}/timer-24h-card.js")
-    
-    _LOGGER.info("Timer 24H frontend resources registered")
