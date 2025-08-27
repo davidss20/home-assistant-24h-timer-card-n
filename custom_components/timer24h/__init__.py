@@ -4,7 +4,6 @@ Timer 24H Custom Integration for Home Assistant.
 This integration provides server-side timer scheduling with 24-hour (48 half-hour slots)
 precision, condition-based automation, and comprehensive state management.
 """
-import asyncio
 import logging
 from datetime import timedelta
 
@@ -14,7 +13,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import discovery
 from homeassistant.helpers.typing import ConfigType
-# Frontend integration removed to prevent HACS confusion
 
 from .const import DOMAIN, PLATFORMS
 from .coordinator import Timer24HCoordinator
