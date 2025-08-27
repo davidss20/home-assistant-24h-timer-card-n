@@ -4,6 +4,7 @@ Timer 24H Custom Integration for Home Assistant.
 This integration provides server-side timer scheduling with 24-hour (48 half-hour slots)
 precision, condition-based automation, and comprehensive state management.
 """
+
 import logging
 from datetime import timedelta
 
@@ -84,7 +85,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return unload_ok
 
 
-async def _async_register_services(hass: HomeAssistant, coordinator: Timer24HCoordinator) -> None:
+async def _async_register_services(
+    hass: HomeAssistant, coordinator: Timer24HCoordinator
+) -> None:
     """Register Timer 24H services."""
 
     async def async_set_schedule(call):
@@ -113,7 +116,7 @@ async def _async_register_services(hass: HomeAssistant, coordinator: Timer24HCoo
             target_entity_id=target_entity_id,
             slots=slots,
             enabled=enabled,
-            timezone=timezone
+            timezone=timezone,
         )
 
     async def async_enable_schedule(call):

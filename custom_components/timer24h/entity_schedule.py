@@ -1,4 +1,5 @@
 """Schedule entities for Timer 24H integration."""
+
 from __future__ import annotations
 
 import logging
@@ -43,7 +44,8 @@ async def async_setup_entry(
         if schedule_id:
             # Check if entity already exists
             existing_entities = [
-                entity for entity in hass.data[DOMAIN].get("entities", [])
+                entity
+                for entity in hass.data[DOMAIN].get("entities", [])
                 if hasattr(entity, "schedule_id") and entity.schedule_id == schedule_id
             ]
 
@@ -159,7 +161,9 @@ class Timer24HScheduleEntity(SensorEntity, RestoreEntity):
             "conditions_count": len(schedule.conditions),
             "next_change_slot": next_change_slot,
             "next_change_state": next_change_state,
-            "next_change_time": next_change_time.isoformat() if next_change_time else None,
+            "next_change_time": next_change_time.isoformat()
+            if next_change_time
+            else None,
         }
 
         # Add condition details
@@ -171,7 +175,9 @@ class Timer24HScheduleEntity(SensorEntity, RestoreEntity):
                     "expected": condition.expected,
                     "policy": condition.policy,
                     "current_state": entity_state.state if entity_state else "unknown",
-                    "is_met": condition.is_met(entity_state.state if entity_state else "unknown"),
+                    "is_met": condition.is_met(
+                        entity_state.state if entity_state else "unknown"
+                    ),
                 }
             attrs["condition_states"] = condition_states
 
@@ -224,8 +230,7 @@ class Timer24HScheduleEntity(SensorEntity, RestoreEntity):
         # Update every minute to reflect current slot changes
         self.async_on_remove(
             self.hass.helpers.event.async_track_time_interval(
-                _periodic_update,
-                dt_util.dt.timedelta(minutes=1)
+                _periodic_update, dt_util.dt.timedelta(minutes=1)
             )
         )
 

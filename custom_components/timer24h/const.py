@@ -1,4 +1,5 @@
 """Constants for the Timer 24H integration."""
+
 from homeassistant.const import Platform
 
 DOMAIN = "timer24h"

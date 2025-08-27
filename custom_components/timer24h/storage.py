@@ -1,4 +1,5 @@
 """Storage management for Timer 24H integration."""
+
 from __future__ import annotations
 
 import logging
@@ -32,7 +33,9 @@ class Timer24HStorage:
             stored_data = await self._store.async_load()
             if stored_data is not None:
                 self._data = Timer24HData.from_dict(stored_data)
-                _LOGGER.info("Loaded %d schedules from storage", len(self._data.schedules))
+                _LOGGER.info(
+                    "Loaded %d schedules from storage", len(self._data.schedules)
+                )
             else:
                 _LOGGER.info("No existing data found, starting with empty storage")
                 self._data = Timer24HData()
@@ -72,7 +75,9 @@ class Timer24HStorage:
             await self.async_save()
             _LOGGER.info("Removed schedule: %s", schedule_id)
         else:
-            _LOGGER.warning("Attempted to remove non-existent schedule: %s", schedule_id)
+            _LOGGER.warning(
+                "Attempted to remove non-existent schedule: %s", schedule_id
+            )
         return existed
 
     async def async_get_schedule(self, schedule_id: str) -> Schedule | None:
@@ -117,9 +122,9 @@ class Timer24HStorage:
 
         if conditions is not None:
             from .models import Condition
+
             schedule.conditions = [
-                Condition.from_dict(c) if isinstance(c, dict) else c
-                for c in conditions
+                Condition.from_dict(c) if isinstance(c, dict) else c for c in conditions
             ]
 
         await self.async_save()
@@ -161,7 +166,9 @@ class Timer24HStorage:
         try:
             self._data = Timer24HData.from_dict(data)
             await self.async_save()
-            _LOGGER.info("Imported Timer 24H data with %d schedules", len(self._data.schedules))
+            _LOGGER.info(
+                "Imported Timer 24H data with %d schedules", len(self._data.schedules)
+            )
         except Exception as err:
             _LOGGER.error("Failed to import Timer 24H data: %s", err)
             raise

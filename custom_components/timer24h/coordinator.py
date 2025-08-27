@@ -1,4 +1,5 @@
 """Coordinator for Timer 24H integration scheduling and state management."""
+
 from __future__ import annotations
 
 import asyncio
@@ -123,7 +124,9 @@ class Timer24HCoordinator:
 
         # If next slot is 0, it's tomorrow
         if next_slot == 0:
-            next_day = now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+            next_day = now.replace(
+                hour=0, minute=0, second=0, microsecond=0
+            ) + timedelta(days=1)
             return next_day
         else:
             # Same day, calculate hour and minute
@@ -163,16 +166,21 @@ class Timer24HCoordinator:
             """Handle condition entity state change."""
             entity_id = event.data.get("entity_id")
             if entity_id in self._condition_entities:
-                _LOGGER.debug("Condition entity %s changed, reconciling affected schedules", entity_id)
-                self.hass.async_create_task(self._async_reconcile_schedules_with_condition(entity_id))
+                _LOGGER.debug(
+                    "Condition entity %s changed, reconciling affected schedules",
+                    entity_id,
+                )
+                self.hass.async_create_task(
+                    self._async_reconcile_schedules_with_condition(entity_id)
+                )
 
         self._condition_unsub = async_track_state_change_event(
-            self.hass,
-            list(self._condition_entities),
-            _async_condition_changed
+            self.hass, list(self._condition_entities), _async_condition_changed
         )
 
-        _LOGGER.debug("Set up condition tracking for %d entities", len(self._condition_entities))
+        _LOGGER.debug(
+            "Set up condition tracking for %d entities", len(self._condition_entities)
+        )
 
     async def _async_reconcile_schedules_with_condition(self, entity_id: str) -> None:
         """Reconcile all schedules that have conditions involving the given entity."""
@@ -200,9 +208,7 @@ class Timer24HCoordinator:
         next_time = self._get_next_slot_time(now)
 
         self._next_timer_handle = async_track_point_in_time(
-            self.hass,
-            self._async_timer_tick,
-            next_time
+            self.hass, self._async_timer_tick, next_time
         )
 
         _LOGGER.debug("Scheduled next timer tick at %s", next_time)
@@ -252,12 +258,15 @@ class Timer24HCoordinator:
 
             if not slot_active:
                 schedule_state.desired_state = False
-                schedule_state.last_condition_evaluation = f"Slot {current_slot} inactive"
+                schedule_state.last_condition_evaluation = (
+                    f"Slot {current_slot} inactive"
+                )
             else:
                 # Evaluate conditions
                 states = {
                     entity_id: self.hass.states.get(entity_id, default=None).state
-                    if self.hass.states.get(entity_id) else "unknown"
+                    if self.hass.states.get(entity_id)
+                    else "unknown"
                     for entity_id in self.storage.get_all_condition_entities()
                 }
 
@@ -277,11 +286,14 @@ class Timer24HCoordinator:
         await self._async_apply_schedule_state(schedule_state)
 
         # Fire event
-        self.hass.bus.async_fire(EVENT_SCHEDULE_UPDATED, {
-            "schedule_id": schedule_id,
-            "desired_state": schedule_state.desired_state,
-            "last_condition_evaluation": schedule_state.last_condition_evaluation,
-        })
+        self.hass.bus.async_fire(
+            EVENT_SCHEDULE_UPDATED,
+            {
+                "schedule_id": schedule_id,
+                "desired_state": schedule_state.desired_state,
+                "last_condition_evaluation": schedule_state.last_condition_evaluation,
+            },
+        )
 
     async def _async_apply_schedule_state(self, schedule_state: ScheduleState) -> None:
         """Apply the desired state for a schedule."""
@@ -304,18 +316,30 @@ class Timer24HCoordinator:
         try:
             if desired:
                 await self.hass.services.async_call(
-                    domain if domain in ["light", "switch", "fan", "climate"] else "homeassistant",
+                    domain
+                    if domain in ["light", "switch", "fan", "climate"]
+                    else "homeassistant",
                     "turn_on",
-                    {"entity_id": schedule.target_entity_id}
+                    {"entity_id": schedule.target_entity_id},
                 )
-                _LOGGER.info("Turned on %s (schedule: %s)", schedule.target_entity_id, schedule.schedule_id)
+                _LOGGER.info(
+                    "Turned on %s (schedule: %s)",
+                    schedule.target_entity_id,
+                    schedule.schedule_id,
+                )
             else:
                 await self.hass.services.async_call(
-                    domain if domain in ["light", "switch", "fan", "climate"] else "homeassistant",
+                    domain
+                    if domain in ["light", "switch", "fan", "climate"]
+                    else "homeassistant",
                     "turn_off",
-                    {"entity_id": schedule.target_entity_id}
+                    {"entity_id": schedule.target_entity_id},
                 )
-                _LOGGER.info("Turned off %s (schedule: %s)", schedule.target_entity_id, schedule.schedule_id)
+                _LOGGER.info(
+                    "Turned off %s (schedule: %s)",
+                    schedule.target_entity_id,
+                    schedule.schedule_id,
+                )
 
             # Remember what we applied
             self._last_applied_states[schedule.target_entity_id] = desired
@@ -326,7 +350,7 @@ class Timer24HCoordinator:
                 "Failed to control %s for schedule %s: %s",
                 schedule.target_entity_id,
                 schedule.schedule_id,
-                err
+                err,
             )
 
     # Schedule management methods
@@ -337,7 +361,7 @@ class Timer24HCoordinator:
         target_entity_id: str,
         slots: list[bool],
         enabled: bool = True,
-        timezone: str | None = None
+        timezone: str | None = None,
     ) -> None:
         """Set a schedule."""
         schedule = Schedule(
@@ -381,7 +405,9 @@ class Timer24HCoordinator:
                 await self.async_reconcile_schedule(schedule_id)
                 _LOGGER.info("Disabled schedule: %s", schedule_id)
 
-    async def async_set_conditions(self, schedule_id: str, conditions: list[dict[str, Any]]) -> None:
+    async def async_set_conditions(
+        self, schedule_id: str, conditions: list[dict[str, Any]]
+    ) -> None:
         """Set conditions for a schedule."""
         if await self.storage.async_set_conditions(schedule_id, conditions):
             # Update state
@@ -430,7 +456,8 @@ class Timer24HCoordinator:
         # Get current conditions
         states = {
             entity_id: self.hass.states.get(entity_id, default=None).state
-            if self.hass.states.get(entity_id) else "unknown"
+            if self.hass.states.get(entity_id)
+            else "unknown"
             for entity_id in self.storage.get_all_condition_entities()
         }
 

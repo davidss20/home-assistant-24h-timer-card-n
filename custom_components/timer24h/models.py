@@ -1,4 +1,5 @@
 """Data models for Timer 24H integration."""
+
 from __future__ import annotations
 
 import logging
@@ -43,7 +44,7 @@ class Condition:
         return cls(
             entity_id=data[CONF_ENTITY_ID],
             expected=data.get(CONF_EXPECTED),
-            policy=data.get(CONF_POLICY, DEFAULT_POLICY)
+            policy=data.get(CONF_POLICY, DEFAULT_POLICY),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -233,7 +234,8 @@ class Timer24HData:
     def get_schedules_for_entity(self, entity_id: str) -> list[Schedule]:
         """Get all schedules that target a specific entity."""
         return [
-            schedule for schedule in self.schedules.values()
+            schedule
+            for schedule in self.schedules.values()
             if schedule.target_entity_id == entity_id
         ]
 
