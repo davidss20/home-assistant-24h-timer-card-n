@@ -1,9 +1,9 @@
 {
   "domain": "timer24h",
   "name": "Timer 24H",
-  "version": "1.1.0",
-  "documentation": "https://github.com/home-assistant-community/timer-24h",
-  "issue_tracker": "https://github.com/home-assistant-community/timer-24h/issues",
+  "version": "1.1.1",
+  "documentation": "https://github.com/davidss20/home-assistant-24h-timer-card-n",
+  "issue_tracker": "https://github.com/davidss20/home-assistant-24h-timer-card-n/issues",
   "dependencies": [],
   "codeowners": ["@timer24h"],
   "requirements": [],
