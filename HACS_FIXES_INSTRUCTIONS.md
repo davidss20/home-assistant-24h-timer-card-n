@@ -15,21 +15,21 @@
 
 ### 2. שדות לא מורשים ב-hacs.json:
 - ❌ הסרנו: `domains`, `iot_class`, `hacs`, `homeassistant` 
-- ✅ השארנו רק: `name`, `content_in_root`, `render_readme`
+- ✅ **פתרון רדיקלי**: נשאר רק `name` (השדה היחיד החובה!)
 
 השדות `domains` ו`iot_class` שייכים ל-`manifest.json`, לא ל-`hacs.json`!
 
 ## 🎯 מה אמור לעבוד עכשיו:
 עם hacs.json המינימלי החדש, שגיאת `<Validation hacsjson> failed` אמורה להיפתר!
 
-**hacs.json הנוכחי (תקין):**
+**🔥 פתרון רדיקלי - hacs.json מינימלי לחלוטין:**
 ```json
 {
-  "name": "Timer 24H Integration",
-  "content_in_root": false,
-  "render_readme": true
+  "name": "Timer 24H Integration"
 }
 ```
+
+**רק שדה אחד - `name` - שהוא חובה. כל השאר אופציונלי!**
 
 ## פעולות נדרשות ב-GitHub 🔧
 
