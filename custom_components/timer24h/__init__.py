@@ -96,22 +96,23 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def _async_register_frontend_resources(hass: HomeAssistant) -> None:
     """Register frontend resources."""
     import os
+
     from homeassistant.components.frontend import add_extra_js_url
-    
+
     # Path to our card JS file
     card_path = os.path.join(os.path.dirname(__file__), "frontend", "timer-24h-card.js")
-    
+
     if os.path.exists(card_path):
         # Register the card as a module
-        add_extra_js_url(hass, f"/local/timer-24h-card.js", es5=False)
-        
+        add_extra_js_url(hass, "/local/timer-24h-card.js", es5=False)
+
         # Copy file to www directory if it doesn't exist
         www_path = hass.config.path("www")
         if not os.path.exists(www_path):
             os.makedirs(www_path)
-        
+
         target_path = os.path.join(www_path, "timer-24h-card.js")
-        
+
         # Copy our card file to www directory
         import shutil
         try:

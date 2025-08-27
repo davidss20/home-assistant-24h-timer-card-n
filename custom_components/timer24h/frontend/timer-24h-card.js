@@ -1,367 +1,516 @@
+// Timer 24H Card for Home Assistant - Integration Built-in
+// Version 2.1.1 - Beautiful Circular UI
+
+// i18n translations & helpers
+const TIMER24H_I18N = {
+  en: {
+    title_default: "24 Hour Timer",
+    status_on: "Active", 
+    status_off: "Inactive",
+    sync_cloud: "Synced",
+    sync_local: "Local",
+  },
+  he: {
+    title_default: "טיימר 24 שעות",
+    status_on: "מופעל",
+    status_off: "מושבת", 
+    sync_cloud: "🌐 מסונכרן",
+    sync_local: "💾 מקומי",
+  },
+  es: {
+    title_default: "Temporizador 24h",
+    status_on: "Activo",
+    status_off: "Inactivo",
+    sync_cloud: "Sincronizado", 
+    sync_local: "Local",
+  },
+  fr: {
+    title_default: "Minuteur 24h",
+    status_on: "Actif",
+    status_off: "Inactif",
+    sync_cloud: "Synchronisé",
+    sync_local: "Local",
+  },
+};
+
+function pickLangFromHass(hass) {
+  const cand = hass?.locale?.language || hass?.language || 
+    (typeof navigator !== "undefined" && navigator.language?.slice(0, 2)) || "en";
+  const key = (cand || "en").toLowerCase().slice(0, 2);
+  return TIMER24H_I18N[key] ? key : "en";
+}
+
+function t(dict, key) {
+  const lang = dict.__lang__ || "en";
+  const pack = TIMER24H_I18N[lang] || TIMER24H_I18N.en;
+  return pack[key] ?? TIMER24H_I18N.en[key] ?? key;
+}
+
 class Timer24HCard extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
+    this.timeSlots = this.initializeTimeSlots();
+    this.currentTime = new Date();
+    this.isSystemActive = true;
+    this.updateInterval = null;
+    this.config = null;
+    this._hass = null;
+
+    // i18n state holder
+    this.__i18n = { __lang__: 'en' };
+  }
+
+  static getStubConfig() {
+    return {
+      title: 'Timer 24H',
+      show_slots: true,
+      language: 'en',
+    };
+  }
+
+  getCardSize() {
+    return 3;
+  }
+
+  static getLayoutOptions() {
+    return {
+      grid_rows: 3,
+      grid_columns: 3,
+      grid_min_rows: 3, 
+      grid_min_columns: 3
+    };
+  }
+
+  setConfig(config) {
+    if (!config) {
+      throw new Error('Invalid configuration');
+    }
+
+    this.config = {
+      title: '24 Hour Timer',
+      show_slots: true,
+      language: 'en',
+      entity: null,
+      ...config
+    };
+
+    this.__i18n = { __lang__: this.config.language || 'en' };
+    this.loadScheduleData();
   }
 
   set hass(hass) {
     this._hass = hass;
-    this.render();
+
+    if (!this.config?.language && hass) {
+      this.__i18n = { __lang__: pickLangFromHass(hass) };
+    }
+
+    if (hass) {
+      this.updateCurrentTime();
+      this.loadScheduleData();
+      this.render();
+    }
   }
 
-  setConfig(config) {
-    this._config = config;
+  get hass() {
+    return this._hass;
+  }
+
+  connectedCallback() {
+    this.startTimer();
+  }
+
+  disconnectedCallback() {
+    if (this.updateInterval) {
+      clearInterval(this.updateInterval);
+    }
+  }
+
+  initializeTimeSlots() {
+    const slots = [];
+    for (let hour = 0; hour < 24; hour++) {
+      slots.push({ hour, minute: 0, isActive: false });
+      slots.push({ hour, minute: 30, isActive: false });
+    }
+    return slots;
+  }
+
+  startTimer() {
+    if (this.updateInterval) {
+      clearInterval(this.updateInterval);
+    }
+
+    this.updateInterval = setInterval(() => {
+      this.updateCurrentTime();
+      this.render();
+    }, 30000); // Update every 30 seconds
+  }
+
+  updateCurrentTime() {
+    this.currentTime = new Date();
+  }
+
+  loadScheduleData() {
+    if (!this._hass) return;
+
+    // Find Timer 24H entities and load their data
+    const entities = Object.keys(this._hass.states)
+      .filter(id => id.startsWith('sensor.timer_24h_'));
+
+    if (entities.length > 0) {
+      const entityId = this.config.entity || entities[0];
+      const entity = this._hass.states[entityId];
+      
+      if (entity && entity.attributes && entity.attributes.slots) {
+        // Convert integration slots to our format
+        const slots = entity.attributes.slots || [];
+        this.timeSlots = [];
+        
+        for (let i = 0; i < 48; i++) {
+          const hour = Math.floor(i / 2);
+          const minute = (i % 2) * 30;
+          this.timeSlots.push({
+            hour,
+            minute,
+            isActive: slots[i] || false
+          });
+        }
+      }
+    }
+  }
+
+  toggleTimeSlot(hour, minute) {
+    const slot = this.timeSlots.find(s => s.hour === hour && s.minute === minute);
+    if (slot) {
+      slot.isActive = !slot.isActive;
+      this.updateIntegrationData();
+      this.render();
+    }
+  }
+
+  updateIntegrationData() {
+    if (!this._hass) return;
+
+    // Find the timer entity
+    const entities = Object.keys(this._hass.states)
+      .filter(id => id.startsWith('sensor.timer_24h_'));
+
+    if (entities.length > 0) {
+      const entityId = this.config.entity || entities[0];
+      const entity = this._hass.states[entityId];
+      
+      if (entity && entity.attributes && entity.attributes.schedule_id) {
+        // Convert our slots to integration format
+        const slots = Array.from({ length: 48 }, (_, i) => {
+          const hour = Math.floor(i / 2);
+          const minute = (i % 2) * 30;
+          const slot = this.timeSlots.find(s => s.hour === hour && s.minute === minute);
+          return slot ? slot.isActive : false;
+        });
+
+        // Update via service
+        this._hass.callService('timer24h', 'set_schedule', {
+          schedule_id: entity.attributes.schedule_id,
+          target_entity_id: entity.attributes.target_entity_id,
+          slots: slots,
+          enabled: entity.attributes.enabled
+        });
+      }
+    }
+  }
+
+  createSectorPath(hour, totalSectors, innerRadius, outerRadius, centerX, centerY) {
+    const startAngle = (hour * 360 / totalSectors - 90) * (Math.PI / 180);
+    const endAngle = ((hour + 1) * 360 / totalSectors - 90) * (Math.PI / 180);
+
+    const x1 = centerX + innerRadius * Math.cos(startAngle);
+    const y1 = centerY + innerRadius * Math.sin(startAngle);
+    const x2 = centerX + outerRadius * Math.cos(startAngle);
+    const y2 = centerY + outerRadius * Math.sin(startAngle);
+    const x3 = centerX + outerRadius * Math.cos(endAngle);
+    const y3 = centerY + outerRadius * Math.sin(endAngle);
+    const x4 = centerX + innerRadius * Math.cos(endAngle);
+    const y4 = centerY + innerRadius * Math.sin(endAngle);
+
+    const largeArcFlag = endAngle - startAngle <= Math.PI ? 0 : 1;
+
+    return `M ${x1} ${y1} L ${x2} ${y2} A ${outerRadius} ${outerRadius} 0 ${largeArcFlag} 1 ${x3} ${y3} L ${x4} ${y4} A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 0 ${x1} ${y1}`;
+  }
+
+  getTextPosition(hour, totalSectors, radius, centerX, centerY) {
+    const angle = ((hour + 0.5) * 360 / totalSectors - 90) * (Math.PI / 180);
+    const x = centerX + radius * Math.cos(angle);
+    const y = centerY + radius * Math.sin(angle);
+    return { x, y };
+  }
+
+  getTimeLabel(hour, minute) {
+    return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
   }
 
   render() {
-    if (!this._hass || !this._config) return;
+    if (!this.config) return;
 
-    const entityId = this._config.entity || this._findTimerEntity();
-    const entity = this._hass.states[entityId];
-    
-    if (!entity) {
-      this.shadowRoot.innerHTML = `
-        <ha-card>
-          <div class="card-content">
-            <p style="color: var(--error-color);">Timer 24H entity not found!</p>
-            <p>Available Timer 24H entities:</p>
-            <ul>
-              ${Object.keys(this._hass.states)
-                .filter(id => id.startsWith('sensor.timer_24h_'))
-                .map(id => `<li><code>${id}</code></li>`)
-                .join('')}
-            </ul>
-            ${Object.keys(this._hass.states).filter(id => id.startsWith('sensor.timer_24h_')).length === 0 ? 
-              '<p style="color: var(--warning-color);">No schedules found. Create one first using the timer24h.set_schedule service.</p>' : ''}
-          </div>
-        </ha-card>
-      `;
-      return;
+    // Ensure timeSlots is always an array
+    if (!Array.isArray(this.timeSlots)) {
+      this.timeSlots = this.initializeTimeSlots();
     }
 
-    const attributes = entity.attributes || {};
-    const scheduleId = attributes.schedule_id || 'Unknown';
-    const targetEntity = attributes.target_entity_id || 'Unknown';
-    const enabled = attributes.enabled ?? false;
-    const currentSlot = attributes.current_slot ?? 0;
-    const isActive = attributes.is_active ?? false;
-    const lastEvaluation = attributes.last_condition_evaluation || 'No conditions';
-    const slots = attributes.slots || [];
+    const centerX = 200;
+    const centerY = 200;
+    const outerRadius = 180;
+    const innerRadius = 50;
+
+    // Check if timer is currently active
+    const currentHour = this.currentTime.getHours();
+    const currentMinute = this.currentTime.getMinutes();
+    const minute = currentMinute < 30 ? 0 : 30;
+
+    const currentSlot = this.timeSlots.find(slot =>
+      slot.hour === currentHour && slot.minute === minute
+    );
+
+    const isCurrentlyActive = (currentSlot?.isActive || false) && this.isSystemActive;
+
+    const sectors = Array.from({ length: 24 }, (_, hour) => {
+      const middleRadius = (innerRadius + outerRadius) / 2;
+
+      // Outer half (full hour - 00)
+      const outerSectorPath = this.createSectorPath(hour, 24, middleRadius, outerRadius, centerX, centerY);
+      const outerTextPos = this.getTextPosition(hour, 24, (middleRadius + outerRadius) / 2, centerX, centerY);
+      const outerSlot = this.timeSlots.find(s => s.hour === hour && s.minute === 0);
+      const outerIsActive = outerSlot?.isActive || false;
+      const outerIsCurrent = this.currentTime.getHours() === hour && this.currentTime.getMinutes() < 30;
+
+      // Inner half (half hour - 30)
+      const innerSectorPath = this.createSectorPath(hour, 24, innerRadius, middleRadius, centerX, centerY);
+      const innerTextPos = this.getTextPosition(hour, 24, (innerRadius + middleRadius) / 2, centerX, centerY);
+      const innerSlot = this.timeSlots.find(s => s.hour === hour && s.minute === 30);
+      const innerIsActive = innerSlot?.isActive || false;
+      const innerIsCurrent = this.currentTime.getHours() === hour && this.currentTime.getMinutes() >= 30;
+
+      // Current hour indicator
+      let currentTimeIndicator = '';
+      if (outerIsCurrent || innerIsCurrent) {
+        const indicatorAngle = ((hour + 0.5) * 360 / 24 - 90) * (Math.PI / 180);
+        const indicatorX = centerX + (outerRadius + 10) * Math.cos(indicatorAngle);
+        const indicatorY = centerY + (outerRadius + 10) * Math.sin(indicatorAngle);
+
+        currentTimeIndicator = `
+          <circle cx="${indicatorX}" cy="${indicatorY}" r="4" 
+                  fill="#ff6b6b" stroke="#ffffff" stroke-width="2">
+            <animate attributeName="r" values="4;6;4" dur="2s" repeatCount="indefinite"/>
+          </circle>
+        `;
+      }
+
+      return `
+        <!-- Outer half (full hour) -->
+        <path d="${outerSectorPath}" 
+              fill="${outerIsActive ? '#10b981' : '#ffffff'}"
+              stroke="${outerIsCurrent ? '#ff6b6b' : '#e5e7eb'}"
+              stroke-width="${outerIsCurrent ? '3' : '1'}"
+              style="cursor: pointer; transition: all 0.2s;"
+              onclick="this.getRootNode().host.toggleTimeSlot(${hour}, 0)"/>
+        <text x="${outerTextPos.x}" y="${outerTextPos.y + 2}" 
+              text-anchor="middle" font-size="9" font-weight="bold"
+              style="pointer-events: none; user-select: none;"
+              fill="${outerIsActive ? '#ffffff' : '#374151'}">
+          ${this.getTimeLabel(hour, 0)}
+        </text>
+        
+        <!-- Inner half (half hour - 30) -->
+        <path d="${innerSectorPath}" 
+              fill="${innerIsActive ? '#10b981' : '#f8f9fa'}"
+              stroke="${innerIsCurrent ? '#ff6b6b' : '#e5e7eb'}"
+              stroke-width="${innerIsCurrent ? '3' : '1'}"
+              style="cursor: pointer; transition: all 0.2s;"
+              onclick="this.getRootNode().host.toggleTimeSlot(${hour}, 30)"/>
+        <text x="${innerTextPos.x}" y="${innerTextPos.y + 1}" 
+              text-anchor="middle" font-size="7" font-weight="bold"
+              style="pointer-events: none; user-select: none;"
+              fill="${innerIsActive ? '#ffffff' : '#6b7280'}">
+          ${this.getTimeLabel(hour, 30)}
+        </text>
+        
+        ${currentTimeIndicator}
+      `;
+    }).join('');
+
+    // Hour divider lines
+    const dividerLines = Array.from({ length: 24 }, (_, i) => {
+      const angle = (i * 360 / 24 - 90) * (Math.PI / 180);
+      const xInner = centerX + innerRadius * Math.cos(angle);
+      const yInner = centerY + innerRadius * Math.sin(angle);
+      const xOuter = centerX + outerRadius * Math.cos(angle);
+      const yOuter = centerY + outerRadius * Math.sin(angle);
+      return `<line x1="${xInner}" y1="${yInner}" x2="${xOuter}" y2="${yOuter}" stroke="#e5e7eb" stroke-width="1"/>`;
+    }).join('');
+
+    const titleText = this.config.title || t(this.__i18n, 'title_default');
 
     this.shadowRoot.innerHTML = `
       <style>
         :host {
           display: block;
+          font-family: var(--primary-font-family, sans-serif);
+          position: relative;
+          contain: layout style paint;
+          margin: 8px;
         }
-        .card-content {
-          padding: 16px;
+        
+        .card {
+          background: var(--card-background-color, #ffffff);
+          border-radius: var(--ha-card-border-radius, 12px);
+          box-shadow: var(--ha-card-box-shadow, 0 2px 8px rgba(0,0,0,0.1));
+          padding: 0;
+          overflow: hidden;
+          height: calc(100% - 16px);
+          min-height: 200px;
+          display: flex;
+          flex-direction: column;
+          position: relative;
+          z-index: 1;
+          isolation: isolate;
+          margin: 8px;
         }
+        
         .header {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 16px;
+          margin-bottom: 4px;
+          padding: 4px 8px 0 8px;
         }
+        
         .title {
-          font-size: 1.2em;
-          font-weight: 500;
-          color: var(--primary-text-color);
-        }
-        .status-badge {
-          padding: 4px 12px;
-          border-radius: 12px;
-          font-size: 0.85em;
-          font-weight: 500;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-        .status-badge.enabled {
-          background-color: var(--success-color);
-          color: white;
-        }
-        .status-badge.disabled {
-          background-color: var(--error-color);
-          color: white;
-        }
-        .status-badge.active {
-          background-color: var(--warning-color);
-          color: white;
-        }
-        .info-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 12px;
-          margin-bottom: 16px;
-        }
-        .info-item {
-          background: var(--card-background-color);
-          padding: 12px;
-          border-radius: 8px;
-          border: 1px solid var(--divider-color);
-        }
-        .info-label {
-          font-size: 0.8em;
-          color: var(--secondary-text-color);
-          margin-bottom: 4px;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-        .info-value {
-          font-weight: 500;
-          color: var(--primary-text-color);
-          word-break: break-all;
-        }
-        .slots-container {
-          margin-top: 16px;
-        }
-        .slots-title {
-          font-size: 0.9em;
-          color: var(--secondary-text-color);
-          margin-bottom: 8px;
-          font-weight: 500;
-        }
-        .time-labels {
-          display: grid;
-          grid-template-columns: repeat(12, 1fr);
-          gap: 2px;
-          margin-bottom: 4px;
-          font-size: 0.7em;
-          color: var(--secondary-text-color);
-        }
-        .time-label {
-          text-align: center;
-          padding: 2px;
-        }
-        .slots-grid {
-          display: grid;
-          grid-template-columns: repeat(12, 1fr);
-          gap: 2px;
-          margin-bottom: 8px;
-        }
-        .slot {
-          aspect-ratio: 1;
-          border: 1px solid var(--divider-color);
-          border-radius: 4px;
+          font-size: 1rem;
+          font-weight: bold;
+          color: var(--primary-text-color, #212121);
           display: flex;
           align-items: center;
-          justify-content: center;
-          font-size: 0.6em;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          background: var(--card-background-color);
         }
-        .slot.active {
-          background-color: var(--primary-color);
-          color: var(--text-primary-color);
-          border-color: var(--primary-color);
-        }
-        .slot.current {
-          border: 2px solid var(--accent-color);
-          box-shadow: 0 0 8px rgba(var(--accent-color-rgb), 0.3);
-        }
-        .slot:hover {
-          transform: scale(1.1);
-          z-index: 1;
-        }
-        .actions {
-          margin-top: 16px;
+        
+        .status-container {
           display: flex;
-          gap: 8px;
-          flex-wrap: wrap;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: 2px;
         }
-        .action-button {
-          padding: 10px 20px;
-          border: none;
-          border-radius: 6px;
-          cursor: pointer;
-          font-weight: 500;
-          font-size: 0.9em;
-          transition: all 0.2s ease;
+        
+        .system-status {
+          font-size: 0.7rem;
+          text-align: center;
+          margin: 0;
+        }
+         
+        .system-status.active {
+          color: #10b981;
+        }
+         
+        .system-status.inactive {
+          color: #f59e0b;
+        }
+        
+        .timer-container {
+          display: flex;
+          justify-content: center;
+          margin: 0;
+          padding: 0;
           flex: 1;
-          min-width: 120px;
+          min-height: 0;
         }
-        .action-button:hover {
-          transform: translateY(-1px);
-          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        .enable-btn {
-          background-color: var(--success-color);
-          color: white;
-        }
-        .disable-btn {
-          background-color: var(--error-color);
-          color: white;
-        }
-        .reconcile-btn {
-          background-color: var(--info-color);
-          color: white;
-        }
-        .evaluation-text {
-          font-size: 0.85em;
-          color: var(--secondary-text-color);
-          font-style: italic;
+        
+        .timer-svg {
+          width: 100%;
+          height: 100%;
+          max-width: 100%;
+          max-height: 100%;
+          display: block;
         }
       </style>
       
-      <ha-card>
-        <div class="card-content">
-          <div class="header">
-            <div class="title">${this._config.title || 'Timer 24H Schedule'}</div>
-            <div class="status-badge ${enabled ? (isActive ? 'active' : 'enabled') : 'disabled'}">
-              ${enabled ? (isActive ? 'Active' : 'Enabled') : 'Disabled'}
-            </div>
+      <div class="card">
+        <div class="header">
+          <div class="title">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="1.2em" height="1.2em" 
+                 style="margin-right: 8px; vertical-align: middle;" role="img" aria-label="Home timer icon" 
+                 fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 11l8-6 8 6v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z" fill="#41BDF5" stroke="#41BDF5"/>
+              <path d="M11 9h2" stroke="white" stroke-width="1.6"/>
+              <circle cx="12" cy="15" r="3.5" stroke="white" stroke-width="1.6" fill="none"/>
+              <path d="M12 15l2-2" stroke="white" stroke-width="1.6"/>
+            </svg>
+            ${titleText}
           </div>
-          
-          <div class="info-grid">
-            <div class="info-item">
-              <div class="info-label">Schedule ID</div>
-              <div class="info-value">${scheduleId}</div>
+          <div class="status-container">
+            <div class="system-status ${this.isSystemActive ? 'active' : 'inactive'}">
+              ${this.isSystemActive ? t(this.__i18n, 'status_on') : t(this.__i18n, 'status_off')}
             </div>
-            <div class="info-item">
-              <div class="info-label">Target Entity</div>
-              <div class="info-value">${targetEntity}</div>
-            </div>
-            <div class="info-item">
-              <div class="info-label">Current Slot</div>
-              <div class="info-value">${currentSlot} (${this._formatSlotTime(currentSlot)})</div>
-            </div>
-            <div class="info-item">
-              <div class="info-label">Entity State</div>
-              <div class="info-value">${entity.state}</div>
-            </div>
-          </div>
-          
-          <div class="info-item">
-            <div class="info-label">Last Evaluation</div>
-            <div class="info-value evaluation-text">${lastEvaluation}</div>
-          </div>
-          
-          ${this._config.show_slots !== false ? `
-          <div class="slots-container">
-            <div class="slots-title">24-Hour Schedule (${slots.filter(Boolean).length}/48 active slots)</div>
-            <div class="time-labels">
-              ${Array.from({length: 12}, (_, i) => `<div class="time-label">${i * 2}:00</div>`).join('')}
-            </div>
-            <div class="slots-grid">
-              ${this._generateSlots(slots, currentSlot)}
-            </div>
-          </div>
-          ` : ''}
-          
-          <div class="actions">
-            <button class="action-button ${enabled ? 'disable-btn' : 'enable-btn'}" 
-                    @click="${() => this._toggleSchedule()}">
-              ${enabled ? 'Disable Schedule' : 'Enable Schedule'}
-            </button>
-            <button class="action-button reconcile-btn" 
-                    @click="${() => this._reconcileSchedule()}">
-              Reconcile Now
-            </button>
           </div>
         </div>
-      </ha-card>
+        
+        <div class="timer-container">
+          <svg class="timer-svg" viewBox="0 0 400 400">
+            <!-- Outer circles -->
+            <circle cx="${centerX}" cy="${centerY}" r="${outerRadius}" 
+                    fill="none" stroke="#e5e7eb" stroke-width="2"/>
+            <circle cx="${centerX}" cy="${centerY}" r="${innerRadius}" 
+                    fill="none" stroke="#e5e7eb" stroke-width="2"/>
+            <!-- Middle ring separating inner/outer halves -->
+            <circle cx="${centerX}" cy="${centerY}" r="${(innerRadius + outerRadius) / 2}" 
+                    fill="none" stroke="#d1d5db" stroke-width="1.5"/>
+            
+            ${dividerLines}
+            ${sectors}
+            
+            <!-- Center indicator -->
+            <circle cx="${centerX}" cy="${centerY}" r="45" 
+                    fill="${isCurrentlyActive ? 'rgba(239, 68, 68, 0.1)' : 'rgba(107, 114, 128, 0.05)'}" 
+                    stroke="${isCurrentlyActive ? 'rgba(239, 68, 68, 0.3)' : 'rgba(107, 114, 128, 0.2)'}" 
+                    stroke-width="1"/>
+            
+            <text x="${centerX}" y="${centerY - 8}" 
+                  text-anchor="middle" font-size="14" font-weight="bold"
+                  fill="${isCurrentlyActive ? '#ef4444' : '#6b7280'}">
+              ${isCurrentlyActive ? t(this.__i18n, 'status_on') : t(this.__i18n, 'status_off')}
+            </text>
+            
+            <text x="${centerX}" y="${centerY + 8}" 
+                  text-anchor="middle" font-size="10"
+                  fill="${isCurrentlyActive ? '#ef4444' : '#6b7280'}">
+              ${this.currentTime.getHours().toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}
+            </text>
+          </svg>
+        </div>
+      </div>
     `;
-
-    // Add event listeners
-    this.shadowRoot.querySelectorAll('[\\@click]').forEach(button => {
-      const clickHandler = button.getAttribute('@click');
-      if (clickHandler) {
-        button.addEventListener('click', () => {
-          if (clickHandler.includes('_toggleSchedule')) this._toggleSchedule();
-          if (clickHandler.includes('_reconcileSchedule')) this._reconcileSchedule();
-        });
-      }
-    });
-  }
-
-  _findTimerEntity() {
-    if (!this._hass) return 'sensor.timer_24h_main';
-    
-    const timerEntities = Object.keys(this._hass.states)
-      .filter(id => id.startsWith('sensor.timer_24h_'));
-    
-    return timerEntities.length > 0 ? timerEntities[0] : 'sensor.timer_24h_main';
-  }
-
-  _formatSlotTime(slot) {
-    const hour = Math.floor(slot / 2);
-    const minute = (slot % 2) * 30;
-    return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-  }
-
-  _generateSlots(slots, currentSlot) {
-    return Array.from({length: 48}, (_, i) => {
-      const isActive = slots[i] || false;
-      const isCurrent = i === currentSlot;
-      const classes = ['slot'];
-      if (isActive) classes.push('active');
-      if (isCurrent) classes.push('current');
-      
-      const hour = Math.floor(i / 2);
-      const showHour = i % 4 === 0 ? hour : '';
-      
-      return `<div class="${classes.join(' ')}" title="Slot ${i} (${this._formatSlotTime(i)})">${showHour}</div>`;
-    }).join('');
-  }
-
-  _toggleSchedule() {
-    const entityId = this._config.entity || this._findTimerEntity();
-    const entity = this._hass.states[entityId];
-    const scheduleId = entity?.attributes?.schedule_id;
-    const enabled = entity?.attributes?.enabled || false;
-    
-    if (!scheduleId) {
-      alert('No schedule ID found');
-      return;
-    }
-    
-    this._hass.callService('timer24h', enabled ? 'disable' : 'enable', {
-      schedule_id: scheduleId
-    });
-  }
-
-  _reconcileSchedule() {
-    const entityId = this._config.entity || this._findTimerEntity();
-    const entity = this._hass.states[entityId];
-    const scheduleId = entity?.attributes?.schedule_id;
-    
-    if (!scheduleId) {
-      this._hass.callService('timer24h', 'reconcile', {});
-    } else {
-      this._hass.callService('timer24h', 'reconcile', {
-        schedule_id: scheduleId
-      });
-    }
-  }
-
-  static getConfigElement() {
-    return document.createElement('timer-24h-card-editor');
-  }
-
-  static getStubConfig() {
-    return {
-      type: 'custom:timer-24h-card',
-      title: 'Timer 24H Schedule',
-      show_slots: true
-    };
   }
 }
 
-// Register the card
+// Register the custom element
 customElements.define('timer-24h-card', Timer24HCard);
 
-// Add to custom cards list
+// Register card for Home Assistant UI
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: 'timer-24h-card',
   name: 'Timer 24H Card',
-  description: 'A card for displaying and controlling Timer 24H schedules',
+  description: '24h timer with beautiful circular UI and multi-language support',
   preview: true,
-  documentationURL: 'https://github.com/davidss20/home-assistant-24h-timer-card-n'
+  documentationURL: 'https://github.com/davidss20/home-assistant-24h-timer-card-n',
+  // Grid layout support
+  grid_options: {
+    rows: 3,
+    columns: 3,
+    min_rows: 3,
+    min_columns: 3
+  }
 });
 
 console.info(
-  '%c  Timer 24H Card  %c  v1.0.0  ',
+  '%c  TIMER-24H-CARD  %c  Version 2.1.1 - Integration Built-in  ',
   'color: orange; font-weight: bold; background: black',
   'color: white; font-weight: bold; background: dimgray'
 );
