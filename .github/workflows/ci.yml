@@ -44,44 +44,7 @@ jobs:
         pytest tests/ -v
       continue-on-error: true  # Tests might not exist yet
 
-  # Validate TypeScript code (Card)
-  validate-typescript:
-    runs-on: ubuntu-latest
-    name: Validate TypeScript Card
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: www/timer-24h-card/package.json
-
-    - name: Install dependencies
-      working-directory: www/timer-24h-card
-      run: npm ci
-
-    - name: Type check
-      working-directory: www/timer-24h-card
-      run: npm run type-check
-
-    - name: Lint TypeScript
-      working-directory: www/timer-24h-card
-      run: npm run lint
-      continue-on-error: true  # ESLint config might not be complete
-
-    - name: Build card
-      working-directory: www/timer-24h-card
-      run: npm run build
-
-    - name: Check build output
-      working-directory: www/timer-24h-card
-      run: |
-        ls -la timer-24h-card.js timer-24h-card-editor.js
-        du -h timer-24h-card.js timer-24h-card-editor.js
+  # Skip TypeScript validation - pure integration now
 
   # Validate HACS compatibility
   validate-hacs:
@@ -96,7 +59,6 @@ jobs:
       uses: hacs/action@main
       with:
         category: integration
-        path: custom_components/timer24h
 
     - name: Validate manifest.json
       run: |
@@ -163,7 +125,7 @@ jobs:
   integration-tests:
     runs-on: ubuntu-latest
     name: Integration Tests
-    needs: [validate-python, validate-typescript]
+    needs: [validate-python]
     if: github.event_name == 'pull_request'
     
     steps:
@@ -197,25 +159,12 @@ jobs:
   build-release:
     runs-on: ubuntu-latest
     name: Build Release Artifacts
-    needs: [validate-python, validate-typescript, validate-hacs]
+    needs: [validate-python, validate-hacs]
     if: github.event_name == 'release'
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: www/timer-24h-card/package.json
-
-    - name: Build TypeScript card
-      working-directory: www/timer-24h-card
-      run: |
-        npm ci
-        npm run build
 
     - name: Create release package
       run: |
@@ -223,13 +172,6 @@ jobs:
         
         # Copy integration files
         cp -r custom_components release-package/
-        
-        # Copy built card files
-        mkdir -p release-package/www/timer-24h-card
-        cp www/timer-24h-card/timer-24h-card.js release-package/www/timer-24h-card/
-        cp www/timer-24h-card/timer-24h-card-editor.js release-package/www/timer-24h-card/
-        cp www/timer-24h-card/i18n release-package/www/timer-24h-card/ -r
-        cp www/timer-24h-card/README.md release-package/www/timer-24h-card/
         
         # Copy documentation
         cp README.md LICENSE release-package/
@@ -287,10 +229,6 @@ jobs:
         py_lines=$(find custom_components/timer24h -name "*.py" -exec wc -l {} \; | awk '{sum += $1} END {print sum}')
         echo "| Python Integration | $py_files | $py_lines |" >> $GITHUB_STEP_SUMMARY
         
-        ts_files=$(find www/timer-24h-card/src -name "*.ts" | wc -l)
-        ts_lines=$(find www/timer-24h-card/src -name "*.ts" -exec wc -l {} \; | awk '{sum += $1} END {print sum}')
-        echo "| TypeScript Card | $ts_files | $ts_lines |" >> $GITHUB_STEP_SUMMARY
-        
         json_files=$(find . -name "*.json" | wc -l)
         echo "| Configuration | $json_files | - |" >> $GITHUB_STEP_SUMMARY
 
@@ -299,6 +237,5 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "## Component Overview" >> $GITHUB_STEP_SUMMARY
         echo "- **Integration**: Server-side scheduling with condition support" >> $GITHUB_STEP_SUMMARY
-        echo "- **Card**: Visual time slot editor with real-time sync" >> $GITHUB_STEP_SUMMARY
         echo "- **I18n**: English, Spanish, French translations" >> $GITHUB_STEP_SUMMARY
         echo "- **HACS**: Full compatibility with automatic installation" >> $GITHUB_STEP_SUMMARY
